@@ -1,1 +1,4 @@
-# haskell-http-proxy
+# Haskell Reverse HTTP Proxy
+
+A learning experience.
+
