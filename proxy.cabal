@@ -27,6 +27,8 @@ executable proxy-exe
                      , network
                      , http-client
                      , http-types
+                     , attoparsec
+                     , bytestring
                      , proxy
   default-language:    Haskell2010
 

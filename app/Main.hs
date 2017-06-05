@@ -7,9 +7,14 @@ import Network.HTTP.Types
 
 import Network (listenOn, accept, PortID(..), Socket)
 import System.Environment (getArgs)
-import System.IO (hGetLine, hPutStrLn, Handle)
+import System.IO (hPrint, hGetLine, hPutStrLn, Handle)
 import Control.Concurrent (forkIO)
 
+import qualified Data.ByteString as BS
+
+import Data.Attoparsec.ByteString as P
+
+import Parser
 import Lib (constructNewRequest)
 
 -- Start up the server listening on the specified port
@@ -18,7 +23,7 @@ main = do
     args <- getArgs
     let port = fromIntegral (read $ head args :: Int)
     sock <- listenOn $ PortNumber port
-    print $ "Listening on " ++ (head args)
+    print $ "Listening on " ++ head args
     sockHandler sock
 
 -- Handle requests from the socket concurrently - uses lightweight threads
@@ -33,16 +38,23 @@ proxyRequest :: Handle -> IO ()
 proxyRequest hdl = do
     manager <- newManager defaultManagerSettings
 
-    -- TODO: Is this the best way to read the incoming request
-    vRequest <- hGetLine hdl
+    -- Efficient way to get bytestrings from the network (I think?)
+    str <- BS.hGetContents hdl
+
+    -- Parse the bytestring and print the HTTP request object
+    print $ show $ doParse str
 
     -- Translate the incoming request to one directed at the backend server
     -- TODO: Get the URL from config
-    request <- parseRequest $ constructNewRequest vRequest "http://localhost:1337"
+    -- request <- parseRequest $ constructNewRequest vRequest "http://localhost:1337"
 
     -- Do the request
-    response <- httpLbs request manager
+    -- response <- httpLbs request manager
 
     -- Proxy the response back to the client
-    hPutStrLn hdl $ show $ responseBody response
+    -- hPrint hdl $ show $ responseBody response
 
+-- Not sure if this is the correct usage of attoparsec...
+doParse str = case parse request str of
+  P.Fail {}         -> error "Uh oh"
+  P.Done contents _ -> contents

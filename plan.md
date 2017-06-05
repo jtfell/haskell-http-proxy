@@ -24,4 +24,4 @@
 ## Resources
 - http://www.catonmat.net/blog/simple-haskell-tcp-server/
 - http://httpd.apache.org/docs/current/howto/reverse_proxy.html
-
+- https://bitbucket.org/bos/attoparsec/src/tip/examples/RFC2616.hs?fileviewer=file-view-default

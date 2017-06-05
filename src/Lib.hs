@@ -12,7 +12,7 @@ getRequestPath :: String -> String
 getRequestPath req = words req !! 1
 
 getRequestMethod :: String -> String
-getRequestMethod req = words req !! 0
+getRequestMethod = head . words
 
 constructNewRequest :: String -> String -> String
 constructNewRequest req host = getRequestMethod req ++ " " ++ host ++ getRequestPath req
