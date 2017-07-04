@@ -10,13 +10,13 @@ import qualified Data.Attoparsec.ByteString as A
 
 -- First we define the ADT for the HttpRequests we will be parsing
 data HttpMethod = Get | Put | Post | Delete
-    deriving (Show)
+    deriving (Show, Eq)
 newtype HttpPath = HttpPath ByteString
-    deriving (Show)
-newtype HttpVersion = HttpVersion ByteString
-    deriving (Show)
+    deriving (Show, Eq)
+newtype HttpVersion = HttpVersion (ByteString, ByteString)
+    deriving (Show, Eq)
 newtype HttpBody = HttpBody ByteString
-    deriving (Show)
+    deriving (Show, Eq)
 data HttpRequest = HttpRequest HttpMethod HttpPath HttpVersion HttpBody
     deriving (Show)
 
@@ -37,7 +37,7 @@ path = HttpPath <$> A.takeWhile (A.notInClass " ")
 
 -- Ignore the HTTP/ and take a digit, a dot and another digit
 version :: Parser HttpVersion
-version = HttpVersion <$> liftA2 append takeDigit (stringCI "." *> takeDigit)
+version = HttpVersion <$> liftA2 (,) (stringCI "HTTP/" *> takeDigit) (stringCI "." *> takeDigit)
     where takeDigit = A.takeWhile (A.inClass "0-9")
 
 -- Keep the rest of the request for passing on
