@@ -3,7 +3,7 @@
 module Main where
 
 import Network.HTTP.Client
-import Network.HTTP.Types
+-- import Network.HTTP.Types
 
 import Network (listenOn, accept, PortID(..), Socket)
 import System.Environment (getArgs)
@@ -12,9 +12,7 @@ import Control.Concurrent (forkIO)
 
 import qualified Data.ByteString as BS
 
-import Data.Attoparsec.ByteString as P
-
-import Parser
+import Parser (parseRequest)
 import Lib (constructNewRequest)
 
 -- Start up the server listening on the specified port
@@ -42,7 +40,7 @@ proxyRequest hdl = do
     str <- BS.hGetContents hdl
 
     -- Parse the bytestring and print the HTTP request object
-    print $ show $ doParse str
+    print $ show str
 
     -- Translate the incoming request to one directed at the backend server
     -- TODO: Get the URL from config
@@ -54,7 +52,3 @@ proxyRequest hdl = do
     -- Proxy the response back to the client
     -- hPrint hdl $ show $ responseBody response
 
--- Not sure if this is the correct usage of attoparsec...
-doParse str = case parse request str of
-  P.Fail {}         -> error "Uh oh"
-  P.Done contents _ -> contents

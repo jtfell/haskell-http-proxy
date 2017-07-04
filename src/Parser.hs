@@ -1,64 +1,39 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parser
-    (
-      Header(..)
-    , Request(..)
-    , Response(..)
-    , request
-    , response
-    ) where
+module Parser (parseRequest) where
 
 import Control.Applicative
-import Data.Attoparsec.ByteString as P
-import Data.Attoparsec.ByteString.Char8 (isEndOfLine, isHorizontalSpace, char8, endOfLine, isDigit_w8)
+import Data.Attoparsec.ByteString (Parser, parse, Result)
 import Data.ByteString (ByteString)
-import Data.Word (Word8)
+import qualified Data.Attoparsec.ByteString as A
+import qualified Data.Attoparsec.Combinator as AC
 
-isToken :: Word8 -> Bool
-isToken w = w <= 127 && notInClass "\0-\31()<>@,;:\\\"/[]?={} \t" w
+-- First we define the ADT for the HttpRequests we will be parsing
+data HttpMethod = Get | Put | Post | Delete
+    deriving (Show)
+newtype HttpPath = HttpPath ByteString
+data HttpRequest = HttpRequest HttpMethod HttpPath
 
-skipSpaces :: Parser ()
-skipSpaces = satisfy isHorizontalSpace *> skipWhile isHorizontalSpace
+-- As we don't care about the string after we have parsed it to one
+-- of the HTTP verbs, we can throw away the result of the "string BS"
+-- combinators, keeping only the HttpMethod ADT
+method :: Parser HttpMethod
+method = get <|>
+         put <|>
+         post <|>
+         delete
+    where get = A.string "GET" *> pure Get
+          put = A.string "PUT" *> pure Put
+          post = A.string "POST" *> pure Post
+          delete = A.string "DELETE" *> pure Delete
 
-data Request = Request {
-      requestMethod  :: ByteString
-    , requestUri     :: ByteString
-    , requestVersion :: ByteString
-    } deriving (Eq, Ord, Show)
+-- Take all valid characters (takeWhile) and lift that into the applicative
+-- Parser context
+path :: Parser HttpPath
+path = HttpPath <$> A.takeWhile (A.inClass "a-zA-z0-9/")
 
-httpVersion :: Parser ByteString
-httpVersion = "HTTP/" *> P.takeWhile (\c -> isDigit_w8 c || c == 46)
+request :: Parser request
+request = undefined
 
-requestLine :: Parser Request
-requestLine = Request <$> (takeWhile1 isToken <* char8 ' ')
-                      <*> (takeWhile1 (/=32) <* char8 ' ')
-                      <*> (httpVersion <* endOfLine)
-
-data Header = Header {
-      headerName  :: ByteString
-    , headerValue :: [ByteString]
-    } deriving (Eq, Ord, Show)
-
-messageHeader :: Parser Header
-messageHeader = Header
-  <$> (P.takeWhile isToken <* char8 ':' <* skipWhile isHorizontalSpace)
-  <*> ((:) <$> (takeTill isEndOfLine <* endOfLine)
-           <*> (many $ skipSpaces *> takeTill isEndOfLine <* endOfLine))
-
-request :: Parser (Request, [Header])
-request = (,) <$> requestLine <*> many messageHeader <* endOfLine
-
-data Response = Response {
-      responseVersion :: ByteString
-    , responseCode    :: ByteString
-    , responseMsg     :: ByteString
-    } deriving (Eq, Ord, Show)
-
-responseLine :: Parser Response
-responseLine = Response <$> (httpVersion <* char8 ' ')
-                        <*> (P.takeWhile isDigit_w8 <* char8 ' ')
-                        <*> (takeTill isEndOfLine <* endOfLine)
-
-response :: Parser (Response, [Header])
-response = (,) <$> responseLine <*> many messageHeader <* endOfLine
+parseRequest :: ByteString -> Result ByteString
+parseRequest = parse request
