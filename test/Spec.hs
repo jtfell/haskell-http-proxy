@@ -18,7 +18,8 @@ methodTests = TestList [
   ]
 
 pathTests = TestList [
-     TestCase $ assertParse path "Simple path" "/example/path" (HttpPath "/example/path")
+     TestCase $ assertParse path "Root path" "/" (HttpPath "/")
+  ,  TestCase $ assertParse path "Simple path" "/example" (HttpPath "/example")
   ]
 
 versionTests = TestList [
