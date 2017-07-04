@@ -2,7 +2,7 @@
 
 module Main where
 
-import Network.HTTP.Client
+import Network.HTTP.Client hiding (parseRequest)
 -- import Network.HTTP.Types
 
 import Network (listenOn, accept, PortID(..), Socket)
@@ -39,8 +39,13 @@ proxyRequest hdl = do
     -- Efficient way to get bytestrings from the network (I think?)
     str <- BS.hGetContents hdl
 
+    print str
+
+    -- This is a pure function, so we can't bind it in the monadic context
+    let req = parseRequest str
+
     -- Parse the bytestring and print the HTTP request object
-    print $ show str
+    print $ show req
 
     -- Translate the incoming request to one directed at the backend server
     -- TODO: Get the URL from config
