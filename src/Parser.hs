@@ -18,10 +18,10 @@ newtype HttpVersion = HttpVersion (ByteString, ByteString)
 newtype HttpBody = HttpBody ByteString
     deriving (Show, Eq)
 data HttpRequest = HttpRequest HttpMethod HttpPath HttpVersion HttpBody
-    deriving (Show)
+    deriving (Show, Eq)
 
 -- As we don't care about the string after we have parsed it to one
--- of the HTTP verbs, we can throw away the result of the "string BS"
+-- of the HTTP verbs, we can throw away the result of the "stringCI"
 -- combinators, keeping only the HttpMethod ADT
 method :: Parser HttpMethod
 method = get <|> put <|> post <|> delete
@@ -30,8 +30,7 @@ method = get <|> put <|> post <|> delete
           post = stringCI "POST" *> pure Post
           delete = stringCI "DELETE" *> pure Delete
 
--- Take all valid characters (takeWhile) and lift that into the applicative
--- Parser context
+-- Take all valid characters (takeWhile) and lift that into the applicative Parser context
 path :: Parser HttpPath
 path = HttpPath <$> A.takeWhile (A.notInClass " ")
 
@@ -51,10 +50,8 @@ request = HttpRequest
     <$> method
     <*> (space *> path)
     <*> (space *> version)
-    <*> (A.takeWhile isEndOfLine *> body)
-
--- Helper function for checking for EOL
-isEndOfLine = A.inClass "\r\n"
+    <*> (A.satisfy isEndOfLine *> body)
+    where isEndOfLine w = w == 13 || w == 10
 
 -- Expose a function that takes a string and returns a parsed HttpRequest result
 parseRequest :: ByteString -> Result HttpRequest
