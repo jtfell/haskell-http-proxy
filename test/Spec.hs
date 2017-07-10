@@ -3,12 +3,18 @@
 import Test.HUnit hiding (path)
 import Data.Attoparsec.ByteString
 import Data.ByteString
+import Data.Either
 
 import Parser
 
--- Helper for asserting that a parsed input will result in a concrete output
-assertParse :: (Eq a) => Parser a -> String -> ByteString -> a -> Assertion
-assertParse t l i r = assertEqual l (Just True) $ compareResults (parse t i) (Done "" r)
+-- Taken from https://hackage.haskell.org/package/either-unwrap-1.1
+fromRight           :: Either a b -> b
+fromRight (Left _)  = error "fromRight: Argument takes form 'Left _'" 
+fromRight (Right x) = x
+
+-- Helper for asserting that a parsed input will result in a concrete output, 
+assertParse :: (Eq a, Show a) => Parser a -> String -> ByteString -> a -> Assertion
+assertParse p l i r = assertEqual l r $ fromRight $ parseOnly p i
 
 methodTests = TestList [
      TestCase $ assertParse method "GET Request" "GET" Get
