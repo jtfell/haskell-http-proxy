@@ -31,11 +31,9 @@ requestTests = TestList [
                   (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) (HttpBody "BODY"))
   ]
 
-main2 = runTestTT $ TestList [
+main = runTestTT $ TestList [
     TestLabel "HttpMethod" methodTests
   , TestLabel "HttpPath" pathTests
   , TestLabel "HttpVersion" versionTests
   , TestLabel "HttpRequest" requestTests
   ]
-
-main = runTestTT $ TestList [ TestCase $ assertParse path2 "path2" "/ d" ("/ d") ]
