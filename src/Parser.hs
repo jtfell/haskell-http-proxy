@@ -8,7 +8,7 @@ module Parser where
 
 import Control.Applicative
 import Data.Attoparsec.ByteString (Parser, parse, Result)
-import Data.Attoparsec.ByteString.Char8 (space, stringCI)
+import Data.Attoparsec.ByteString.Char8 (space, isDigit_w8, stringCI)
 import Data.ByteString (ByteString, append)
 import qualified Data.Attoparsec.ByteString as A
 
@@ -30,11 +30,15 @@ data HttpRequest = HttpRequest HttpMethod HttpPath HttpVersion HttpHeaders HttpB
     deriving (Show, Eq)
 
 --
+-- Helpers functions
+--
+eol = A.takeWhile (\w -> w == 13 || w == 10)
+noEol = A.takeWhile (\w -> not (w == 13 || w == 10))
+digit = A.takeWhile isDigit_w8
+
+--
 -- Parsers for all the above types
 --
-
--- Helper function for specifying and EOL char
-eol = A.satisfy (\w -> w == 13 || w == 10)
 
 -- As we don't care about the string after we have parsed it to one
 -- of the HTTP verbs, we can throw away the result of the "stringCI"
@@ -52,13 +56,11 @@ path = HttpPath <$> A.takeWhile (A.notInClass " ")
 
 -- Ignore the HTTP/ and take a digit, a dot and another digit
 version :: Parser HttpVersion
-version = HttpVersion <$> liftA2 (,) (stringCI "HTTP/" *> takeDigit) (stringCI "." *> takeDigit)
-    where takeDigit = A.takeWhile (A.inClass "0-9")
+version = HttpVersion <$> liftA2 (,) (stringCI "HTTP/" *> digit) (stringCI "." *> digit)
 
 header :: Parser HttpHeader
-header = HttpHeader <$> liftA2 (,) takeLabel (stringCI ": " *> takeValue)
+header = HttpHeader <$> liftA2 (,) takeLabel (stringCI ": " *> noEol)
     where takeLabel = A.takeWhile (A.notInClass ": \n\r")
-          takeValue = A.takeWhile (A.notInClass "\n\r")
 
 headers :: Parser HttpHeaders
 headers = header `A.sepBy` eol
@@ -73,9 +75,9 @@ request :: Parser HttpRequest
 request = HttpRequest
     <$> method
     <*> (space *> path)
-    <*> (space *> version <* eol)
-    <*> headers
-    <*> body
+    <*> (space *> version)
+    <*> (eol *> headers)
+    <*> (eol *> body)
 
 -- 
 -- Expose a function that takes a string and returns a parsed HttpRequest result

@@ -34,13 +34,22 @@ versionTests = TestList [
 
 headerTests = TestList [
      TestCase $ assertParse header "Basic header" "Cache-Control: none" (HttpHeader ("Cache-Control", "none"))
-  ,  TestCase $ assertParse headers "Basic header" "Cache-Control: none\nAccept: text/html"
+  ,  TestCase $ assertParse headers "Basic header list" "Cache-Control: none\nAccept: text/html"
+          [HttpHeader ("Cache-Control", "none"), HttpHeader ("Accept", "text/html")]
+  ,  TestCase $ assertParse headers "Basic header list double EOL" "Cache-Control: none\r\nAccept: text/html"
           [HttpHeader ("Cache-Control", "none"), HttpHeader ("Accept", "text/html")]
   ]
 
 requestTests = TestList [
      TestCase $ assertParse request "Minimal Request" "GET / HTTP/1.1\nBODY"
                   (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) [] (HttpBody "BODY"))
+  ,  TestCase $ assertParse request "Basic Curl Request"
+                  "GET / HTTP/1.1\r\nHost: localhost:4000\r\nUser-Agent: curl/7.51.0\r\nAccept: */*\r\n\r\n"
+                  (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) [
+                    HttpHeader ("Host", "localhost:4000")
+                  , HttpHeader ("User-Agent", "curl/7.51.0")
+                  , HttpHeader ("Accept", "*/*")
+                  ] (HttpBody ""))
   ]
 
 main = runTestTT $ TestList [
