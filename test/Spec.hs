@@ -3,16 +3,15 @@
 import Test.HUnit hiding (path)
 import Data.Attoparsec.ByteString
 import Data.ByteString
-import Data.Either
 
 import Parser
 
--- Taken from https://hackage.haskell.org/package/either-unwrap-1.1
+-- Modified from https://hackage.haskell.org/package/either-unwrap-1.1
 fromRight           :: (Show a) => Either a b -> b
 fromRight (Left x)  = error ("fromRight: Argument takes form 'Left " ++ show x ++ "'")
 fromRight (Right x) = x
 
--- Helper for asserting that a parsed input will result in a concrete output, 
+-- Helper for asserting that a parsed input will result in a concrete output
 assertParse :: (Eq a, Show a) => Parser a -> String -> ByteString -> a -> Assertion
 assertParse p l i r = assertEqual l r $ fromRight $ parseOnly p i
 

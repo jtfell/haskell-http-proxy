@@ -7,10 +7,13 @@
 module Parser where
 
 import Control.Applicative
+import Data.Monoid
 import Data.Attoparsec.ByteString (Parser, parse, Result)
 import Data.Attoparsec.ByteString.Char8 (space, isDigit_w8, stringCI)
-import Data.ByteString (ByteString, append)
 import qualified Data.Attoparsec.ByteString as A
+
+import Data.ByteString (ByteString, append)
+import Data.ByteString.Builder
 
 --
 -- Definitions for HTTP types
@@ -82,5 +85,40 @@ request = HttpRequest
 -- 
 -- Expose a function that takes a string and returns a parsed HttpRequest result
 --
-parseRequest :: ByteString -> Result HttpRequest
-parseRequest = parse request
+parseRequest = A.parseOnly request
+
+--
+-- Define a pretty-printer for HttpRequests
+-- 
+-- Makes use of the mappend operator (<>) to combine ByteStrings as they are a monoid
+--
+printRequest :: HttpRequest -> ByteString
+printRequest (HttpRequest m p v h b) =
+    printMethod m <> " " <>
+    printPath p <> " " <> 
+    printVersion v <> "\n" <> 
+    printHeaders h <> "\n" <>
+    printBody b
+
+printMethod :: HttpMethod -> ByteString
+printMethod m 
+    | m == Get = "GET"
+    | m == Put = "PUT"
+    | m == Post = "POST"
+    | m == Delete = "DELETE"
+
+printPath :: HttpPath -> ByteString
+printPath (HttpPath p) = p
+
+printVersion :: HttpVersion -> ByteString
+printVersion (HttpVersion (v1,v2)) = "HTTP/" <> v1 <> "." <> v2
+
+printHeaders :: HttpHeaders -> ByteString
+printHeaders x = mconcat $ map (\h -> printHeader h <> "\n") x
+
+printHeader :: HttpHeader -> ByteString
+printHeader (HttpHeader (l, v)) = l <> ": " <> v
+
+printBody :: HttpBody -> ByteString
+printBody (HttpBody b) = b
+
