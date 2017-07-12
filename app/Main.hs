@@ -13,7 +13,6 @@ import Control.Concurrent (forkIO)
 import qualified Data.ByteString as BS
 
 import Parser (parseRequest)
-import Lib (constructNewRequest)
 
 -- Start up the server listening on the specified port
 main :: IO ()

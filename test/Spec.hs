@@ -8,8 +8,8 @@ import Data.Either
 import Parser
 
 -- Taken from https://hackage.haskell.org/package/either-unwrap-1.1
-fromRight           :: Either a b -> b
-fromRight (Left _)  = error "fromRight: Argument takes form 'Left _'" 
+fromRight           :: (Show a) => Either a b -> b
+fromRight (Left x)  = error ("fromRight: Argument takes form 'Left " ++ show x ++ "'")
 fromRight (Right x) = x
 
 -- Helper for asserting that a parsed input will result in a concrete output, 
@@ -32,14 +32,21 @@ versionTests = TestList [
      TestCase $ assertParse version "HTTP 1.1" "HTTP/1.1" (HttpVersion ("1", "1"))
   ]
 
+headerTests = TestList [
+     TestCase $ assertParse header "Basic header" "Cache-Control: none" (HttpHeader ("Cache-Control", "none"))
+  ,  TestCase $ assertParse headers "Basic header" "Cache-Control: none\nAccept: text/html"
+          [HttpHeader ("Cache-Control", "none"), HttpHeader ("Accept", "text/html")]
+  ]
+
 requestTests = TestList [
      TestCase $ assertParse request "Minimal Request" "GET / HTTP/1.1\nBODY"
-                  (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) (HttpBody "BODY"))
+                  (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) [] (HttpBody "BODY"))
   ]
 
 main = runTestTT $ TestList [
     TestLabel "HttpMethod" methodTests
   , TestLabel "HttpPath" pathTests
   , TestLabel "HttpVersion" versionTests
+  , TestLabel "HttpHeader" headerTests
   , TestLabel "HttpRequest" requestTests
   ]

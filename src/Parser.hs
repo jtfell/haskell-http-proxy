@@ -1,5 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+--
+-- Super basic HTTP parser using the attoparsec library.
+--
+
 module Parser where
 
 import Control.Applicative
@@ -8,7 +12,9 @@ import Data.Attoparsec.ByteString.Char8 (space, stringCI)
 import Data.ByteString (ByteString, append)
 import qualified Data.Attoparsec.ByteString as A
 
--- First we define the ADT for the HttpRequests we will be parsing
+--
+-- Definitions for HTTP types
+--
 data HttpMethod = Get | Put | Post | Delete
     deriving (Show, Eq)
 newtype HttpPath = HttpPath ByteString
@@ -17,8 +23,18 @@ newtype HttpVersion = HttpVersion (ByteString, ByteString)
     deriving (Show, Eq)
 newtype HttpBody = HttpBody ByteString
     deriving (Show, Eq)
-data HttpRequest = HttpRequest HttpMethod HttpPath HttpVersion HttpBody
+newtype HttpHeader = HttpHeader (ByteString, ByteString)
     deriving (Show, Eq)
+type HttpHeaders = [HttpHeader]
+data HttpRequest = HttpRequest HttpMethod HttpPath HttpVersion HttpHeaders HttpBody
+    deriving (Show, Eq)
+
+--
+-- Parsers for all the above types
+--
+
+-- Helper function for specifying and EOL char
+eol = A.satisfy (\w -> w == 13 || w == 10)
 
 -- As we don't care about the string after we have parsed it to one
 -- of the HTTP verbs, we can throw away the result of the "stringCI"
@@ -39,20 +55,30 @@ version :: Parser HttpVersion
 version = HttpVersion <$> liftA2 (,) (stringCI "HTTP/" *> takeDigit) (stringCI "." *> takeDigit)
     where takeDigit = A.takeWhile (A.inClass "0-9")
 
+header :: Parser HttpHeader
+header = HttpHeader <$> liftA2 (,) takeLabel (stringCI ": " *> takeValue)
+    where takeLabel = A.takeWhile (A.notInClass ": \n\r")
+          takeValue = A.takeWhile (A.notInClass "\n\r")
+
+headers :: Parser HttpHeaders
+headers = header `A.sepBy` eol
+
 -- Keep the rest of the request for passing on
 body :: Parser HttpBody
 body = HttpBody <$> A.takeByteString
 
 -- Combine all the bits of the request into a singular parser, separated by
--- spaces (and a newline)
+-- spaces/newlines
 request :: Parser HttpRequest
 request = HttpRequest
     <$> method
     <*> (space *> path)
-    <*> (space *> version)
-    <*> (A.satisfy isEndOfLine *> body)
-    where isEndOfLine w = w == 13 || w == 10
+    <*> (space *> version <* eol)
+    <*> headers
+    <*> body
 
+-- 
 -- Expose a function that takes a string and returns a parsed HttpRequest result
+--
 parseRequest :: ByteString -> Result HttpRequest
 parseRequest = parse request
