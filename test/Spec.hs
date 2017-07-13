@@ -13,7 +13,7 @@ fromRight (Right x) = x
 
 -- Helper for asserting that a parsed input will result in a concrete output
 assertParse :: (Eq a, Show a) => Parser a -> String -> ByteString -> a -> Assertion
-assertParse p l i r = assertEqual l r $ fromRight $ parseOnly p i
+assertParse p l i x = assertEqual l x $ fromRight $ parseOnly p i
 
 methodTests = TestList [
      TestCase $ assertParse method "GET Request" "GET" Get
@@ -51,10 +51,17 @@ requestTests = TestList [
                   ] (HttpBody ""))
   ]
 
+printTests = TestList [
+      TestCase $ assertEqual "Print simple request"
+          "GET / HTTP/1.1\n\nBODY"
+          $ printRequest (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) [] (HttpBody "BODY"))
+  ]
+
 main = runTestTT $ TestList [
     TestLabel "HttpMethod" methodTests
   , TestLabel "HttpPath" pathTests
   , TestLabel "HttpVersion" versionTests
   , TestLabel "HttpHeader" headerTests
   , TestLabel "HttpRequest" requestTests
+  , TestLabel "printRequest" printTests
   ]
