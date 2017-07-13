@@ -42,7 +42,7 @@ proxyRequest hdl = do
     let req = fromRight $ parseRequest str
 
     -- Parse the bytestring and print the HTTP request object
-    print $ show $ printRequest req
+    print $ printRequest req
 
     res <- sendRequest req
 

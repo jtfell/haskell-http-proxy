@@ -97,7 +97,7 @@ printRequest (HttpRequest m p v h b) =
     printMethod m <> " " <>
     printPath p <> " " <> 
     printVersion v <> "\n" <> 
-    printHeaders h <> "\n" <>
+    printHeaders h <>
     printBody b
 
 printMethod :: HttpMethod -> ByteString

@@ -53,7 +53,7 @@ requestTests = TestList [
 
 printTests = TestList [
       TestCase $ assertEqual "Print simple request"
-          "GET / HTTP/1.1\n\nBODY"
+          "GET / HTTP/1.1\nBODY"
           $ printRequest (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) [] (HttpBody "BODY"))
   ]
 
