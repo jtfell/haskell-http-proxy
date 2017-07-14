@@ -4,7 +4,7 @@ A dead simple reverse HTTP proxy. Not intended for production usage, just a lear
 
 ### Getting started
 
-Fire up the server,
+Fire up the server, ensuring that you have a backend server running on port 3000 (currently hardcoded)
 
 ```
 stack build
