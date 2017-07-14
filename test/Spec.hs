@@ -5,6 +5,8 @@ import Data.Attoparsec.ByteString
 import Data.ByteString
 
 import Parser
+import Types
+import PrettyPrinter
 
 -- Modified from https://hackage.haskell.org/package/either-unwrap-1.1
 fromRight           :: (Show a) => Either a b -> b

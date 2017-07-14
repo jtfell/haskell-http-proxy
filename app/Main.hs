@@ -13,7 +13,9 @@ import Data.Monoid
 
 import qualified Data.ByteString as BS
 
+import Types
 import Parser
+import PrettyPrinter
 
 -- Start up the server listening on the specified port
 main :: IO ()
