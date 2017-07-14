@@ -5,27 +5,15 @@
 -- Super basic HTTP parser using the attoparsec library.
 --
 
-
 module Parser where
 
 import Prelude hiding (takeWhile)
 import Types
 import Control.Applicative
 import Data.ByteString (ByteString)
-import Data.Attoparsec.ByteString (Parser, parse, parseOnly,
-                                   takeWhile, notInClass, takeByteString, sepBy)
+import Data.Attoparsec.ByteString (Parser, parse, parseOnly, takeWhile,
+                                   notInClass, takeByteString, sepBy)
 import Data.Attoparsec.ByteString.Char8 (space, isDigit_w8, stringCI)
-
---
--- Helpers functions
---
-eol = takeWhile (\w -> w == 13 || w == 10)
-noEol = takeWhile (\w -> not (w == 13 || w == 10))
-digit = takeWhile isDigit_w8
-
---
--- Parsers for all the above types
---
 
 -- As we don't care about the string after we have parsed it to one
 -- of the HTTP verbs, we can throw away the result of the "stringCI"
@@ -45,10 +33,12 @@ path = HttpPath <$> takeWhile (notInClass " ")
 version :: Parser HttpVersion
 version = HttpVersion <$> liftA2 (,) (stringCI "HTTP/" *> digit) (stringCI "." *> digit)
 
+-- Header names and values are separated by ": " and placed in a tuple.
 header :: Parser HttpHeader
 header = HttpHeader <$> liftA2 (,) takeLabel (stringCI ": " *> noEol)
     where takeLabel = takeWhile (notInClass ": \n\r")
 
+-- The list of headers are separated only by newlines
 headers :: Parser HttpHeaders
 headers = header `sepBy` eol
 
@@ -56,8 +46,7 @@ headers = header `sepBy` eol
 body :: Parser HttpBody
 body = HttpBody <$> takeByteString
 
--- Combine all the bits of the request into a singular parser, separated by
--- spaces/newlines
+-- Combine all the bits of the request into a singular parser, separated by spaces/newlines
 request :: Parser HttpRequest
 request = HttpRequest
     <$> method
@@ -67,6 +56,15 @@ request = HttpRequest
     <*> (eol *> body)
 
 -- 
--- Expose a function that takes a string and returns a parsed HttpRequest result
+-- Expose a function that takes a string and returns a parsed HttpRequest result (or an error)
 --
+parseRequest :: ByteString -> Either String HttpRequest
 parseRequest = parseOnly request
+
+--
+-- Helper functions (Note that they all use takeWhile)
+--
+eol = takeWhile (\w -> w == 13 || w == 10)
+noEol = takeWhile (\w -> not (w == 13 || w == 10))
+digit = takeWhile isDigit_w8
+

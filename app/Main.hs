@@ -1,5 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+--
+-- Basic HTTP Reverse Proxy Server. Purposely constrained by not using any HTTP-specific dependencies.
+--
+-- Current limitations:
+--   * Hardcoded backend server port (and no other configuration either really)
+--   * Unknown performance
+--
+
 module Main where
 
 import Network (listenOn, accept, PortID(..), Socket)
@@ -55,11 +63,11 @@ sendRequest hdl req = hPrint hdl $ printRequest req
 proxyRequest :: HttpRequest -> IO HttpRequest
 proxyRequest req = do
 
-    -- Interrogate DNS for localhost:3000
+    -- Interrogate DNS for localhost:3000 (Hardcoded for development simplicity)
     addrinfos <- getAddrInfo Nothing (Just "") (Just "3000")
     let serveraddr = head addrinfos
 
-    -- Create the TCP socket
+    -- Create the TCP socket and connect to it
     sock <- socket (addrFamily serveraddr) Stream defaultProtocol
     connect sock (addrAddress serveraddr)
 
@@ -76,6 +84,7 @@ proxyRequest req = do
 
     -- Return the parsed response for sending back to the original client
     return $ fromRight $ parseRequest msg
+
 
 fromRight           :: (Show a) => Either a b -> b
 fromRight (Left x)  = error ("fromRight: Argument takes form 'Left " ++ show x ++ "'")

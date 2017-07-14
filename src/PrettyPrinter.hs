@@ -2,6 +2,7 @@
 
 --
 -- Pretty printer for HttpRequests
+-- Makes use of the mappend operator (<>) to combine ByteStrings as they are monoids
 --
 
 module PrettyPrinter where
@@ -9,17 +10,6 @@ module PrettyPrinter where
 import Types
 import Data.Monoid
 import Data.ByteString (ByteString)
-
---
--- Makes use of the mappend operator (<>) to combine ByteStrings as they are a monoid
---
-printRequest :: HttpRequest -> ByteString
-printRequest (HttpRequest m p v h b) =
-    printMethod m <> " " <>
-    printPath p <> " " <> 
-    printVersion v <> "\n" <> 
-    printHeaders h <>
-    printBody b
 
 printMethod :: HttpMethod -> ByteString
 printMethod m 
@@ -42,4 +32,12 @@ printHeader (HttpHeader (l, v)) = l <> ": " <> v
 
 printBody :: HttpBody -> ByteString
 printBody (HttpBody b) = b
+
+printRequest :: HttpRequest -> ByteString
+printRequest (HttpRequest m p v h b) =
+    printMethod m <> " " <>
+    printPath p <> " " <> 
+    printVersion v <> "\n" <> 
+    printHeaders h <>
+    printBody b
 
