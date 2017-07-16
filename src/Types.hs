@@ -17,13 +17,16 @@ newtype HttpPath = HttpPath ByteString
 newtype HttpVersion = HttpVersion (ByteString, ByteString)
     deriving (Show, Eq)
 
-newtype HttpBody = HttpBody ByteString
-    deriving (Show, Eq)
-
 newtype HttpHeader = HttpHeader (ByteString, ByteString)
     deriving (Show, Eq)
 
 type HttpHeaders = [HttpHeader]
 
-data HttpRequest = HttpRequest HttpMethod HttpPath HttpVersion HttpHeaders HttpBody
+newtype HttpBody = HttpBody ByteString
+    deriving (Show, Eq)
+
+data HttpRequestHead = HttpRequestHead HttpMethod HttpPath HttpVersion HttpHeaders
+    deriving (Show, Eq)
+
+data HttpRequest = HttpRequest HttpRequestHead HttpBody
     deriving (Show, Eq)

@@ -25,7 +25,7 @@ printVersion :: HttpVersion -> ByteString
 printVersion (HttpVersion (v1,v2)) = "HTTP/" <> v1 <> "." <> v2
 
 printHeaders :: HttpHeaders -> ByteString
-printHeaders x = mconcat $ map (\h -> printHeader h <> "\n") x
+printHeaders x = mconcat $ map (\h -> printHeader h <> "\r\n") x
 
 printHeader :: HttpHeader -> ByteString
 printHeader (HttpHeader (l, v)) = l <> ": " <> v
@@ -33,11 +33,14 @@ printHeader (HttpHeader (l, v)) = l <> ": " <> v
 printBody :: HttpBody -> ByteString
 printBody (HttpBody b) = b
 
-printRequest :: HttpRequest -> ByteString
-printRequest (HttpRequest m p v h b) =
+printRequestHead :: HttpRequestHead -> ByteString
+printRequestHead (HttpRequestHead m p v h) =
     printMethod m <> " " <>
     printPath p <> " " <> 
-    printVersion v <> "\n" <> 
-    printHeaders h <>
-    printBody b
+    printVersion v <> "\r\n" <> 
+    printHeaders h
+
+printRequest :: HttpRequest -> ByteString
+printRequest (HttpRequest h b) =
+    printRequestHead h <> "\r\n" <> printBody b
 

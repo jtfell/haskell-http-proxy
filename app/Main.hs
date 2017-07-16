@@ -15,11 +15,15 @@ import Network.Socket hiding (recv, accept)
 import Network.Socket.ByteString (recv, sendAll)
 import System.Environment (getArgs)
 import System.IO (hPrint, hGetLine, hPutStrLn, Handle, hSetBuffering,
-                  BufferMode(NoBuffering))
+                  BufferMode(NoBuffering), hGetChar)
 import Control.Concurrent (forkIO)
+import Control.Monad
 import Data.Monoid
+import Data.Maybe
+import Data.Attoparsec.ByteString (maybeResult, parseWith)
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Internal as BS (c2w, w2c)
 
 import Types
 import Parser
@@ -55,7 +59,25 @@ handler hdl = do
 -- External interactions for each request
 --
 readRequest :: Handle -> IO HttpRequest
-readRequest hdl = (fromRight . parseRequest) <$> BS.hGetContents hdl
+readRequest hdl = do
+    msg <- getBytes hdl 10
+    -- Incrementally get more input from the input handle until the request is done
+    -- (Uses parseWith from attoparsec)
+    parsedReq <- parseWith (getBytes hdl 10) request msg
+    return $ fromMaybe nullReq $ maybeResult parsedReq
+
+-- TODO: This is to skip the typechecker for now - Should send an error message
+-- back if parsing fails.
+nullReq :: HttpRequest
+nullReq = undefined
+
+-- Recursively create a Bytestring from the handler (blocking)
+getBytes :: Handle -> Int -> IO BS.ByteString
+getBytes hdl 0 = return ""
+getBytes hdl num = do
+    restOfBytes <- getBytes hdl (num - 1)
+    thisByte <- hGetChar hdl
+    return $ BS.cons (BS.c2w thisByte) restOfBytes
 
 sendRequest :: Handle -> HttpRequest -> IO ()
 sendRequest hdl req = hPrint hdl $ printRequest req
@@ -82,11 +104,12 @@ proxyRequest req = do
     -- Close the socket
     close sock
 
+
     -- Return the parsed response for sending back to the original client
-    return $ fromRight $ parseRequest msg
+    return req
+    -- return $ fromRight $ parseRequest msg
 
 
 fromRight           :: (Show a) => Either a b -> b
 fromRight (Left x)  = error ("fromRight: Argument takes form 'Left " ++ show x ++ "'")
 fromRight (Right x) = x
-
