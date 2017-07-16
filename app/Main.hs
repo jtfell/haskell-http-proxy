@@ -53,7 +53,7 @@ handler hdl = do
      hSetBuffering hdl NoBuffering
      req <- readRequest hdl 
      res <- proxyRequest req
-     sendRequest hdl res
+     hPrint hdl res
 
 --
 -- External interactions for each request
@@ -62,8 +62,7 @@ readRequest :: Handle -> IO HttpRequest
 readRequest hdl = do
     msg <- getBytes hdl 10
     -- Incrementally get more input from the input handle until the request is done
-    -- (Uses parseWith from attoparsec)
-    parsedReq <- parseWith (getBytes hdl 10) request msg
+    parsedReq <- parseWith (getBytes hdl 1) request msg
     return $ fromMaybe nullReq $ maybeResult parsedReq
 
 -- TODO: This is to skip the typechecker for now - Should send an error message
@@ -77,12 +76,10 @@ getBytes hdl 0 = return ""
 getBytes hdl num = do
     restOfBytes <- getBytes hdl (num - 1)
     thisByte <- hGetChar hdl
-    return $ BS.cons (BS.c2w thisByte) restOfBytes
+    -- I think snoc is inefficient here?
+    return $ BS.snoc restOfBytes (BS.c2w thisByte)
 
-sendRequest :: Handle -> HttpRequest -> IO ()
-sendRequest hdl req = hPrint hdl $ printRequest req
-
-proxyRequest :: HttpRequest -> IO HttpRequest
+proxyRequest :: HttpRequest -> IO BS.ByteString
 proxyRequest req = do
 
     -- Interrogate DNS for localhost:3000 (Hardcoded for development simplicity)
@@ -104,10 +101,7 @@ proxyRequest req = do
     -- Close the socket
     close sock
 
-
-    -- Return the parsed response for sending back to the original client
-    return req
-    -- return $ fromRight $ parseRequest msg
+    return msg
 
 
 fromRight           :: (Show a) => Either a b -> b
