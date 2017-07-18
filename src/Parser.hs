@@ -31,9 +31,14 @@ method = get <|> put <|> post <|> delete
           post = stringCI "POST" *> pure Post
           delete = stringCI "DELETE" *> pure Delete
 
--- Take all valid characters (takeWhile) and lift that into the applicative Parser context
+-- Take all valid characters
 path :: Parser HttpPath
 path = HttpPath <$> takeWhile (notInClass " ")
+
+-- Take all digits
+status :: Parser HttpStatus
+status = constructStatus . toInt <$> digit
+    where toInt y = fst $ fromMaybe (0, "") (readInt y)
 
 -- Ignore the HTTP/ and take a digit, a dot and another digit
 version :: Parser HttpVersion
@@ -52,9 +57,12 @@ headers = header `sepBy` eol
 body :: Int -> Parser HttpBody
 body length = HttpBody <$> take length
 
--- Combine all the bits of the request into a singular parser, separated by spaces/newlines
 --
--- Note that there is an extra EOL between the last header and the body
+-- Combine the smaller parsers into one for the request and one for the response.
+--
+-- Both use the same pattern: parse the head, then use it to determine how long
+-- the body is and take that many bytes
+--
 requestHead :: Parser HttpRequestHead
 requestHead = HttpRequestHead
     <$> method
@@ -62,16 +70,28 @@ requestHead = HttpRequestHead
     <*> (space *> version)
     <*> (eol *> headers <* eol)
 
---
--- Parse the head, then use it to determine how long the body is and take that many bytes
---
 request :: Parser HttpRequest
 request = do
     reqHead <- requestHead
     eol
-    let bodyLength = getBodyLength reqHead
+    let bodyLength = getReqBodyLength reqHead
     reqBody <- body bodyLength
     return (HttpRequest reqHead reqBody)
+
+responseHead :: Parser HttpResponseHead
+responseHead = HttpResponseHead
+    <$> version
+    <*> (space *> status)
+    <* (space *> noEol)
+    <*> (eol *> headers <* eol)
+
+response :: Parser HttpResponse
+response = do
+    resHead <- responseHead
+    eol
+    let bodyLength = getResBodyLength resHead
+    resBody <- body bodyLength
+    return (HttpResponse resHead resBody)
 
 --
 -- Helper functions
@@ -83,11 +103,22 @@ digit = takeWhile isDigit_w8
 --
 -- Inspect the headers/HTTP verb to determine the length of the body
 --
-getBodyLength :: HttpRequestHead -> Int
-getBodyLength (HttpRequestHead m p v h)
+getReqBodyLength :: HttpRequestHead -> Int
+getReqBodyLength (HttpRequestHead m p v h)
     | m == Get = 0
     | hasContentLength h = getContentLength h
-    -- TODO: implement chunking encoding stuff
+    -- TODO: implement chunking encoding stuff (try using max of getContentLength/getChunkedLength as both can
+    -- default to 0)
+    | otherwise = 0
+
+--
+-- Inspect the headers/HTTP verb to determine the length of the body
+--
+getResBodyLength :: HttpResponseHead -> Int
+getResBodyLength (HttpResponseHead v s h)
+    | hasContentLength h = getContentLength h
+    -- TODO: implement chunking encoding stuff (try using max of getContentLength/getChunkedLength as both can
+    -- default to 0)
     | otherwise = 0
 
 --

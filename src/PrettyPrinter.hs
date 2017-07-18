@@ -10,6 +10,7 @@ module PrettyPrinter where
 import Types
 import Data.Monoid
 import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (pack)
 
 printMethod :: HttpMethod -> ByteString
 printMethod m 
@@ -20,6 +21,9 @@ printMethod m
 
 printPath :: HttpPath -> ByteString
 printPath (HttpPath p) = p
+
+printStatus :: HttpStatus -> ByteString
+printStatus (HttpStatus c m) = (pack . show) c <> " " <> m
 
 printVersion :: HttpVersion -> ByteString
 printVersion (HttpVersion (v1,v2)) = "HTTP/" <> v1 <> "." <> v2
@@ -43,4 +47,14 @@ printRequestHead (HttpRequestHead m p v h) =
 printRequest :: HttpRequest -> ByteString
 printRequest (HttpRequest h b) =
     printRequestHead h <> "\r\n" <> printBody b
+
+printResponseHead :: HttpResponseHead -> ByteString
+printResponseHead (HttpResponseHead v s h) =
+    printVersion v <> " " <> 
+    printStatus s <> "\r\n" <>
+    printHeaders h
+
+printResponse:: HttpResponse -> ByteString
+printResponse (HttpResponse h b) =
+    printResponseHead h <> "\r\n" <> printBody b
 

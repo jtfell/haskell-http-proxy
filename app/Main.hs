@@ -15,12 +15,12 @@ import Network.Socket hiding (recv, accept)
 import Network.Socket.ByteString (recv, sendAll)
 import System.Environment (getArgs)
 import System.IO (hPrint, hGetLine, hPutStrLn, Handle, hSetBuffering,
-                  BufferMode(NoBuffering), hGetChar)
+                  BufferMode(NoBuffering))
 import Control.Concurrent (forkIO)
 import Control.Monad
 import Data.Monoid
 import Data.Maybe
-import Data.Attoparsec.ByteString (maybeResult, parseWith)
+import Data.Attoparsec.ByteString (maybeResult, parseWith, parse)
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BS (c2w, w2c)
@@ -53,16 +53,16 @@ handler hdl = do
      hSetBuffering hdl NoBuffering
      req <- readRequest hdl 
      res <- proxyRequest req
-     hPrint hdl res
+     hPrint hdl $ printResponse res
 
 --
 -- External interactions for each request
 --
 readRequest :: Handle -> IO HttpRequest
 readRequest hdl = do
-    msg <- getBytes hdl 10
+    msg <- BS.hGetNonBlocking hdl 1024
     -- Incrementally get more input from the input handle until the request is done
-    parsedReq <- parseWith (getBytes hdl 1) request msg
+    parsedReq <- parseWith (BS.hGetNonBlocking hdl 1024) request msg
     return $ fromMaybe nullReq $ maybeResult parsedReq
 
 -- TODO: This is to skip the typechecker for now - Should send an error message
@@ -70,16 +70,10 @@ readRequest hdl = do
 nullReq :: HttpRequest
 nullReq = undefined
 
--- Recursively create a Bytestring from the handler (blocking)
-getBytes :: Handle -> Int -> IO BS.ByteString
-getBytes hdl 0 = return ""
-getBytes hdl num = do
-    restOfBytes <- getBytes hdl (num - 1)
-    thisByte <- hGetChar hdl
-    -- I think snoc is inefficient here?
-    return $ BS.snoc restOfBytes (BS.c2w thisByte)
+nullRes :: HttpResponse
+nullRes = undefined
 
-proxyRequest :: HttpRequest -> IO BS.ByteString
+proxyRequest :: HttpRequest -> IO HttpResponse
 proxyRequest req = do
 
     -- Interrogate DNS for localhost:3000 (Hardcoded for development simplicity)
@@ -101,7 +95,9 @@ proxyRequest req = do
     -- Close the socket
     close sock
 
-    return msg
+    let res = fromMaybe nullRes $ maybeResult $ parse response msg
+    print $ printResponse res
+    return res
 
 
 fromRight           :: (Show a) => Either a b -> b
