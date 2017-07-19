@@ -18,6 +18,11 @@ printMethod m
     | m == Put = "PUT"
     | m == Post = "POST"
     | m == Delete = "DELETE"
+    | m == Head = "HEAD"
+    | m == Trace = "TRACE"
+    | m == Connect = "CONNECT"
+    | m == Options = "OPTIONS"
+    | m == Patch = "PATCH"
 
 printPath :: HttpPath -> ByteString
 printPath (HttpPath p) = p
@@ -34,6 +39,7 @@ printHeaders x = mconcat $ map (\h -> printHeader h <> "\r\n") x
 printHeader :: HttpHeader -> ByteString
 printHeader (HttpHeader (l, v)) = l <> ": " <> v
 
+-- TODO: Need to re-encode as chunked I think? - otherwise the transfer-encoding header needs to be stripped
 printBody :: HttpBody -> ByteString
 printBody (HttpBody b) = b
 

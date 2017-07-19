@@ -6,11 +6,13 @@ import Data.ByteString
 
 import Parser
 import Types
-import PrettyPrinter
+
+import ResponseSpec
+import RequestSpec
 
 -- Modified from https://hackage.haskell.org/package/either-unwrap-1.1
 fromRight           :: (Show a) => Either a b -> b
-fromRight (Left x)  = error ("fromRight: Argument takes form 'Left " ++ show x ++ "'")
+fromRight (Left x)  = error ("Failed with: 'Left " ++ show x ++ "'")
 fromRight (Right x) = x
 
 -- Helper for asserting that a parsed input will result in a concrete output
@@ -39,40 +41,30 @@ headerTests = TestList [
           [HttpHeader ("Cache-Control", "none"), HttpHeader ("Accept", "text/html")]
   ]
 
-requestTests = TestList [
-     TestCase $ assertParse request "Basic Get Request"
-                  "GET / HTTP/1.1\r\nHost: localhost:4000\r\nUser-Agent: curl/7.51.0\r\nAccept: */*\r\n\r\n"
-                  (HttpRequest 
-                    (HttpRequestHead Get (HttpPath "/") (HttpVersion ("1", "1")) [
-                      HttpHeader ("Host", "localhost:4000")
-                    , HttpHeader ("User-Agent", "curl/7.51.0")
-                    , HttpHeader ("Accept", "*/*")
-                    ])
-                    (HttpBody "")
-                  )
-  ,  TestCase $ assertParse request "Basic Get Request"
-                  "POST / HTTP/1.1\r\nHost: localhost:4000\r\nContent-Length: 13\r\nAccept: */*\r\n\r\n12345678901233"
-                  (HttpRequest 
-                    (HttpRequestHead Post (HttpPath "/") (HttpVersion ("1", "1")) [
-                      HttpHeader ("Host", "localhost:4000")
-                    , HttpHeader ("Content-Length", "13")
-                    , HttpHeader ("Accept", "*/*")
-                    ])
-                    (HttpBody "1234567890123")
-                  )
+statusTests = TestList [
+     TestCase $ assertParse status "Basic status" "200 OK" (HttpStatus 200 "OK")
+     -- Is this the best behaviour here? Validation should happen later
+  ,  TestCase $ assertParse status "Non-existent status code" "390 WEW" (HttpStatus 390 "")
   ]
 
--- printTests = TestList [
---       TestCase $ assertEqual "Print simple request"
---           "GET / HTTP/1.1\r\n\r\n"
---           $ printRequest (HttpRequest Get (HttpPath "/") (HttpVersion ("1", "1")) [] (HttpBody ""))
---   ]
+body5 = body (Just 5)
+bodyChunked = body Nothing
+
+bodyTests = TestList [
+     TestCase $ assertParse body5 "With content length" "hello" (HttpBody "hello")
+     -- Example from wikipedia page
+  ,  TestCase $ assertParse bodyChunked "With chunked encoding" "4\r\nWiki\r\n5\r\npedia\r\nE\r\n in\r\n\r\nchunks.\r\n0\r\n\r\n" (HttpBody "Wikipedia in\r\n\r\nchunks.")
+  ]
 
 main = runTestTT $ TestList [
     TestLabel "HttpMethod" methodTests
   , TestLabel "HttpPath" pathTests
   , TestLabel "HttpVersion" versionTests
   , TestLabel "HttpHeader" headerTests
-  , TestLabel "HttpRequest" requestTests
---  , TestLabel "printRequest" printTests
+  , TestLabel "HttpStatus" statusTests
+  , TestLabel "HttpBody" bodyTests
+  , TestLabel "Parse HttpRequest" parseRequestTests
+  , TestLabel "Print HttpResponse" printRequestTests
+  , TestLabel "Parse HttpRequest" parseResponseTests
+  , TestLabel "Print HttpResponse" printRequestTests
   ]

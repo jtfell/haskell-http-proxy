@@ -11,7 +11,7 @@ import Data.ByteString (ByteString)
 --
 -- Generic types
 --
-data HttpMethod = Get | Put | Post | Delete
+data HttpMethod = Get | Put | Post | Delete | Head | Trace | Connect | Options | Patch
     deriving (Show, Eq)
 
 data HttpStatus = HttpStatus Int ByteString
@@ -92,11 +92,20 @@ instance Enum HttpStatus where
   toEnum 511 = HttpStatus 511 "Network Authentication Required"
   toEnum 599 = HttpStatus 599 "Network Connect Timeout Error"
 
+  toEnum c   = HttpStatus c ""
+
 getStatusCode :: HttpStatus -> Int
 getStatusCode (HttpStatus c m) = c
 
 constructStatus :: Int -> HttpStatus
 constructStatus = toEnum
+
+isValidStatus (HttpStatus c m) = m /= ""
+isInfoStatus (HttpStatus c m) = c >= 100 && c < 200
+isSuccessStatus (HttpStatus c m) = c >= 200 && c < 300
+isRedirectStatus (HttpStatus c m) = c >= 300 && c < 400
+isClientErrorStatus (HttpStatus c m) = c >= 400 && c < 500
+isServerErrorStatus (HttpStatus c m) = c >= 500 && c < 600
 
 newtype HttpPath = HttpPath ByteString
     deriving (Show, Eq)

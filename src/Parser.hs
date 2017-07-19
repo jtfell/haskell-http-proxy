@@ -18,18 +18,23 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (readInt)
 import Data.Attoparsec.ByteString (Parser, parse, parseOnly, takeWhile, take,
                                    notInClass, takeByteString, sepBy, satisfy,
-                                   Result, parseWith)
+                                   Result, parseWith, inClass)
 import Data.Attoparsec.ByteString.Char8 (space, isDigit_w8, stringCI)
 
 -- As we don't care about the string after we have parsed it to one
 -- of the HTTP verbs, we can throw away the result of the "stringCI"
 -- combinators, keeping only the HttpMethod ADT
 method :: Parser HttpMethod
-method = get <|> put <|> post <|> delete
+method = get <|> put <|> post <|> delete <|> head <|> trace <|> connect <|> options <|> patch
     where get = stringCI "GET" *> pure Get
           put = stringCI "PUT" *> pure Put
           post = stringCI "POST" *> pure Post
           delete = stringCI "DELETE" *> pure Delete
+          head = stringCI "HEAD" *> pure Head
+          trace = stringCI "TRACE" *> pure Trace
+          connect = stringCI "CONNECT" *> pure Connect
+          options = stringCI "OPTIONS" *> pure Options
+          patch = stringCI "PATCH" *> pure Patch
 
 -- Take all valid characters
 path :: Parser HttpPath
@@ -53,9 +58,28 @@ header = HttpHeader <$> liftA2 (,) takeLabel (stringCI ": " *> noEol)
 headers :: Parser HttpHeaders
 headers = header `sepBy` eol
 
--- Keep the rest of the request for passing on
-body :: Int -> Parser HttpBody
-body length = HttpBody <$> take length
+-- Keep the rest of the request for passing on (Note that Nothing indicates that it is chunked encoded)
+body :: Maybe Int -> Parser HttpBody
+body (Just x) = HttpBody <$> take x
+body Nothing = HttpBody <$> fmap mconcat chunks <* eol
+
+chunk :: Parser ByteString
+chunk = do
+    len <- hexDigit
+    eol
+    take $ hexDigitToInt len
+
+chunks :: Parser [ByteString]
+chunks = chunk `sepBy` eol
+
+hexDigitToInt :: ByteString -> Int
+hexDigitToInt "A" = 10
+hexDigitToInt "B" = 11
+hexDigitToInt "C" = 12
+hexDigitToInt "D" = 13
+hexDigitToInt "E" = 14
+hexDigitToInt "F" = 15
+hexDigitToInt x = fst (fromMaybe (0, "") (readInt x))
 
 --
 -- Combine the smaller parsers into one for the request and one for the response.
@@ -99,27 +123,29 @@ response = do
 eol = stringCI "\r\n"
 noEol = takeWhile (\w -> not (w == 13 || w == 10))
 digit = takeWhile isDigit_w8
+hexDigit = takeWhile isHexDigit_w8
+-- hexDigit = takeWhile (inClass "0123456789ABCDEF")
+isHexDigit_w8 w = w - 48 <= 9 || w - 65 <= 5
 
 --
 -- Inspect the headers/HTTP verb to determine the length of the body
 --
-getReqBodyLength :: HttpRequestHead -> Int
+getReqBodyLength :: HttpRequestHead -> Maybe Int
 getReqBodyLength (HttpRequestHead m p v h)
-    | m == Get = 0
-    | hasContentLength h = getContentLength h
-    -- TODO: implement chunking encoding stuff (try using max of getContentLength/getChunkedLength as both can
-    -- default to 0)
-    | otherwise = 0
+    | m == Get = Just 0
+    | hasContentLength h = Just (getContentLength h)
+    | isChunkedEncoding h = Nothing
+    | otherwise = Just 0
 
 --
 -- Inspect the headers/HTTP verb to determine the length of the body
 --
-getResBodyLength :: HttpResponseHead -> Int
+getResBodyLength :: HttpResponseHead -> Maybe Int
 getResBodyLength (HttpResponseHead v s h)
-    | hasContentLength h = getContentLength h
-    -- TODO: implement chunking encoding stuff (try using max of getContentLength/getChunkedLength as both can
-    -- default to 0)
-    | otherwise = 0
+    | isRedirectStatus s = Just 0
+    | hasContentLength h = Just (getContentLength h)
+    | isChunkedEncoding h = Nothing
+    | otherwise = Just 0
 
 --
 -- Check if there is a content length header
@@ -129,6 +155,12 @@ hasContentLength [] = False
 hasContentLength (HttpHeader (x,y):xys)
     | x == "Content-Length" = True
     | otherwise = hasContentLength xys
+
+isChunkedEncoding :: HttpHeaders -> Bool
+isChunkedEncoding [] = False
+isChunkedEncoding (HttpHeader (x,y):xys)
+    | x == "Transfer-Encoding" && y == "chunked" = True
+    | otherwise = isChunkedEncoding xys
 
 --
 -- Get the content length header value (or 0 if it doesn't exist)
