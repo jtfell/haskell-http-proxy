@@ -97,8 +97,3 @@ proxyRequest req = do
 
     let res = fromMaybe nullRes $ maybeResult $ parse response msg
     return res
-
-
-fromRight           :: (Show a) => Either a b -> b
-fromRight (Left x)  = error ("fromRight: Argument takes form 'Left " ++ show x ++ "'")
-fromRight (Right x) = x
