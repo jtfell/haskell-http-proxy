@@ -38,7 +38,7 @@ method = get <|> put <|> post <|> delete <|> head <|> trace <|> connect <|> opti
 
 -- Take all valid characters
 path :: Parser HttpPath
-path = HttpPath <$> takeWhile (notInClass " ")
+path = HttpPath <$> takeWhile (notInClass " \n\r")
 
 -- Take all digits
 status :: Parser HttpStatus

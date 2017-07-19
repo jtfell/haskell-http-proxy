@@ -26,11 +26,12 @@ Currently has no HTTP-specific dependencies:
  - bytestring
  - HUnit (for testing)
 
-### Future plans
+### Future features
 
 To be added in no particular order (if I feel like it)
 
  - Config files - apache nginx compatible is a good starting point for features
  - Benchmarking - compare to mighty to see how much room for improvement there is (http://www.mew.org/~kazu/proj/mighttpd/en/)
  - Multiple backend servers with load balancing algorithm
-
+ - Logging
+ - Header replacement

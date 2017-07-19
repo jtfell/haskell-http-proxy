@@ -10,20 +10,20 @@
 
 module Main where
 
+import System.Environment (getArgs)
+import System.IO (Handle, hSetBuffering, BufferMode(NoBuffering))
+
 import Network (listenOn, accept, PortID(..), Socket)
 import Network.Socket hiding (recv, accept)
 import Network.Socket.ByteString (recv, sendAll)
-import System.Environment (getArgs)
-import System.IO (hPrint, hGetLine, hPutStrLn, Handle, hSetBuffering,
-                  BufferMode(NoBuffering))
+
 import Control.Concurrent (forkIO)
 import Control.Monad
+
 import Data.Monoid
 import Data.Maybe
 import Data.Attoparsec.ByteString (maybeResult, parseWith, parse)
-
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Internal as BS (c2w, w2c)
 
 import Types
 import Parser
@@ -53,14 +53,14 @@ handler hdl = do
      hSetBuffering hdl NoBuffering
      req <- readRequest hdl 
      res <- proxyRequest req
-     hPrint hdl $ printResponse res
+     BS.hPut hdl $ printResponse res
 
 --
 -- External interactions for each request
 --
 readRequest :: Handle -> IO HttpRequest
 readRequest hdl = do
-    msg <- BS.hGetNonBlocking hdl 1024
+    msg <- BS.hGet hdl 1024
     -- Incrementally get more input from the input handle until the request is done
     parsedReq <- parseWith (BS.hGetNonBlocking hdl 1024) request msg
     return $ fromMaybe nullReq $ maybeResult parsedReq
@@ -96,7 +96,6 @@ proxyRequest req = do
     close sock
 
     let res = fromMaybe nullRes $ maybeResult $ parse response msg
-    print $ printResponse res
     return res
 
 
