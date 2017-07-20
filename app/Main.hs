@@ -18,7 +18,6 @@ import Network.Socket hiding (recv, accept)
 import Network.Socket.ByteString (recv, sendAll)
 
 import Control.Concurrent (forkIO)
-import Control.Monad
 
 import Data.Monoid
 import Data.Maybe

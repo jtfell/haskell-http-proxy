@@ -47,8 +47,8 @@ statusTests = TestList [
   ,  TestCase $ assertParse status "Non-existent status code" "390 WEW" (HttpStatus 390 "")
   ]
 
-body5 = body (Just 5)
-bodyChunked = body Nothing
+body5 = body (Length 5)
+bodyChunked = body Chunked
 
 bodyTests = TestList [
      TestCase $ assertParse body5 "With content length" "hello" (HttpBody "hello")

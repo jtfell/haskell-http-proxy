@@ -58,16 +58,20 @@ header = HttpHeader <$> liftA2 (,) takeLabel (stringCI ": " *> noEol)
 headers :: Parser HttpHeaders
 headers = header `sepBy` eol
 
--- Keep the rest of the request for passing on (Note that Nothing indicates that it is chunked encoded)
-body :: Maybe Int -> Parser HttpBody
-body (Just x) = HttpBody <$> take x
-body Nothing = HttpBody <$> fmap mconcat chunks <* eol
+data BodyLength = Length Int | Chunked
+
+-- Keep the rest of the request for passing on
+body :: BodyLength -> Parser HttpBody
+body (Length x) = HttpBody <$> take x
+body Chunked = HttpBody <$> fmap mconcat chunks <* eol
 
 chunk :: Parser ByteString
-chunk = do
-    len <- hexDigit
-    eol
-    take $ hexDigitToInt len
+chunk = hexDigit >>= (\len -> eol *> take (hexDigitToInt len))
+
+-- chunk = do
+--     len <- hexDigit
+--     eol
+--     take $ hexDigitToInt len
 
 chunks :: Parser [ByteString]
 chunks = chunk `sepBy` eol
@@ -124,28 +128,27 @@ eol = stringCI "\r\n"
 noEol = takeWhile (\w -> not (w == 13 || w == 10))
 digit = takeWhile isDigit_w8
 hexDigit = takeWhile isHexDigit_w8
--- hexDigit = takeWhile (inClass "0123456789ABCDEF")
 isHexDigit_w8 w = w - 48 <= 9 || w - 65 <= 5
 
 --
 -- Inspect the headers/HTTP verb to determine the length of the body
 --
-getReqBodyLength :: HttpRequestHead -> Maybe Int
+getReqBodyLength :: HttpRequestHead -> BodyLength
 getReqBodyLength (HttpRequestHead m p v h)
-    | m == Get = Just 0
-    | hasContentLength h = Just (getContentLength h)
-    | isChunkedEncoding h = Nothing
-    | otherwise = Just 0
+    | m == Get = Length 0
+    | hasContentLength h = Length (getContentLength h)
+    | isChunkedEncoding h = Chunked
+    | otherwise = Length 0
 
 --
 -- Inspect the headers/HTTP verb to determine the length of the body
 --
-getResBodyLength :: HttpResponseHead -> Maybe Int
+getResBodyLength :: HttpResponseHead -> BodyLength
 getResBodyLength (HttpResponseHead v s h)
-    | isRedirectStatus s = Just 0
-    | hasContentLength h = Just (getContentLength h)
-    | isChunkedEncoding h = Nothing
-    | otherwise = Just 0
+    | isRedirectStatus s = Length 0
+    | hasContentLength h = Length (getContentLength h)
+    | isChunkedEncoding h = Chunked
+    | otherwise = Length 0
 
 --
 -- Check if there is a content length header

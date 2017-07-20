@@ -35,3 +35,4 @@ To be added in no particular order (if I feel like it)
  - Multiple backend servers with load balancing algorithm
  - Logging
  - Header replacement
+ - Timeouts (send back 504)
