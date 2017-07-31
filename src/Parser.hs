@@ -65,6 +65,7 @@ body :: BodyLength -> Parser HttpBody
 body (Length x) = HttpBody <$> take x
 body Chunked = HttpBody <$> fmap mconcat chunks <* eol
 
+-- Context sensitive...
 chunk :: Parser ByteString
 chunk = hexDigit >>= (\len -> eol *> take (hexDigitToInt len))
 

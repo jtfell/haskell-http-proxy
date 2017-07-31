@@ -18,9 +18,12 @@ library
   exposed-modules:     Parser
                      , Types
                      , PrettyPrinter
+                     , Handler
   build-depends:       base >= 4.7 && < 5
                      , attoparsec
                      , bytestring
+                     , pipes
+                     , network
   default-language:    Haskell2010
 
 executable proxy-exe

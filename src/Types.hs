@@ -140,3 +140,4 @@ data HttpResponseHead = HttpResponseHead HttpVersion HttpStatus HttpHeaders
 
 data HttpResponse = HttpResponse HttpResponseHead HttpBody
     deriving (Show, Eq)
+
