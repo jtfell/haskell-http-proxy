@@ -9,13 +9,15 @@ import Network.Socket.ByteString (recv, sendAll)
 
 import Data.Monoid
 import Data.Maybe
-import Data.Attoparsec.ByteString (maybeResult, parseWith, parse)
+import Data.Attoparsec.ByteString (maybeResult, parseWith)
 import qualified Data.ByteString as BS
 
 import Control.Monad (unless)
 import Control.Concurrent (forkIO)
 
 import Pipes
+import Pipes.Parse (Parser, evalStateT, runStateT)
+import Pipes.Attoparsec (parse)
 
 import Types
 import Parser
@@ -32,11 +34,22 @@ handler hdl = do
     hSetBuffering backendHdl NoBuffering
 
     -- Set up a pipe for client -> backend
-    forkIO $ runEffect $ fromNetwork hdl >-> parserP >-> serialiserP >-> toNetwork backendHdl
+    forkIO $ runEffect $ fromNetworkReq hdl >-> serialiserP >-> toNetwork backendHdl
+
+    return ()
 
     -- Set up a pipe for backend -> client
-    runEffect $ fromNetwork backendHdl >-> parserP >-> serialiserP >-> toNetwork hdl
+    -- runEffect $ fromNetwork backendHdl >-> pipesResponseParser >-> serialiserP >-> toNetwork hdl
 
+-- Wraps a producer in a parser to incrementally parse the request from the network, then
+-- produce a HttpRequest Type when its complete
+fromNetworkReq :: Handle -> Producer HttpRequest IO ()
+fromNetworkReq hdl = do
+    (res, prod) <- runStateT (parse request) (fromNetwork hdl)
+    case res of
+        Nothing          -> lift $ "no Error"
+        Just (Right req) -> yield req
+        Just (Left err)  -> lift $ "Error"
 
 fromNetwork :: Handle -> Producer BS.ByteString IO ()
 fromNetwork hdl = do
@@ -52,12 +65,13 @@ toNetwork hdl = do
     lift $ BS.hPut hdl bytes
     toNetwork hdl
 
-parserP :: Pipe BS.ByteString HttpRequest IO ()
-parserP = undefined
--- TODO: Look into pipes-parse and pipes-attoparsec
--- parserP = do
+-- pipesRequestParser :: Parser BS.ByteString HttpRequest
+pipesRequestParser = (parse request)
+pipesResponseParser = (parse response)
+
+-- parserP = runStateT pipesRequestParser
 --   bytes <- await
---   let result = parse request bytes
+--   let result = pipesRequestParser bytes
 --   yield result
 
 serialiserP :: Pipe HttpRequest BS.ByteString IO ()

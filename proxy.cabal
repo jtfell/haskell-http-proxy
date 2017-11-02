@@ -2,7 +2,7 @@ name:                proxy
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/proxy#readme
+homepage:            https://github.com/jtfell/proxy#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Julian Fell
@@ -22,8 +22,11 @@ library
   build-depends:       base >= 4.7 && < 5
                      , attoparsec
                      , bytestring
-                     , pipes
                      , network
+                     , pipes
+                     , pipes-parse
+                     , pipes-attoparsec
+                     , pipes-safe
   default-language:    Haskell2010
 
 executable proxy-exe
@@ -53,4 +56,4 @@ test-suite proxy-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/proxy
+  location: https://github.com/jtfell/proxy
